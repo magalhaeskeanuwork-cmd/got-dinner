@@ -8,6 +8,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from "react";
+import { motion } from "motion/react";
 
 type InventoryItem = {
   name: string;
@@ -375,15 +376,15 @@ const FOOD_ALIASES: Record<string, string> = {
   "baby spinach": "spinach",
   "mixed salad": "lettuce",
   "salad leaves": "lettuce",
-  rocket: "lettuce",
-  arugula: "lettuce",
-  capsicum: "bell pepper",
+  "rocket": "lettuce",
+  "arugula": "lettuce",
+  "capsicum": "bell pepper",
   "red pepper": "bell pepper",
   "green pepper": "bell pepper",
   "yellow pepper": "bell pepper",
   "frozen vegetables": "broccoli",
   "frozen veggies": "broccoli",
-  sweetcorn: "corn",
+  "sweetcorn": "corn",
   "corn kernels": "corn",
   "green peas": "peas",
   "black olives": "olives",
@@ -404,232 +405,282 @@ const FOOD_ALIASES: Record<string, string> = {
   "gluten free pasta": "pasta",
   "gluten-free pasta": "pasta",
   "whole wheat pasta": "pasta",
+  "wholemeal pasta": "pasta",
+  "spaghetti pasta": "spaghetti",
+  "wheat flour": "flour",
+  "all purpose flour": "flour",
+  "plain flour": "flour",
+  "ground almonds": "almonds",
+  "almond milk": "milk",
+  "soy sauce": "soy sauce",
+  "soya sauce": "soy sauce",
 };
 
-const foodStyles = [
-  "Vegan",
-  "Vegetarian",
-  "Low Carb",
-  "Keto",
-  "Low Calorie",
-  "High Protein",
-  "Comfort Food",
-];
-
-const appliances = [
-  "Stove",
-  "Oven",
-  "Air Fryer",
-  "No Cooking",
-];
-
-const cuisines = [
-  "Mediterranean",
-  "Middle Eastern",
-  "Italian",
-  "Asian",
-  "Japanese",
-  "Korean",
-  "Chinese",
-  "Indian",
-  "Mexican",
-  "American",
-  "Portuguese",
-  "French",
-  "Greek",
-  "Turkish",
-  "Thai",
-  "Spanish",
-];
-
-function normalizeFoodName(name: string) {
-  return name
+function normalizeIngredientName(value: string) {
+  return value
     .toLowerCase()
     .trim()
+    .replace(/[’']/g, "")
     .replace(/\s+/g, " ");
 }
 
 function getIngredientEmoji(name: string) {
-  const normalized = normalizeFoodName(name);
+  const normalized = normalizeIngredientName(name);
 
   if (FOOD_EMOJI_MAP[normalized]) {
     return FOOD_EMOJI_MAP[normalized];
   }
 
   if (FOOD_ALIASES[normalized]) {
-    return (
-      FOOD_EMOJI_MAP[
-        FOOD_ALIASES[normalized]
-      ] || "🍽️"
-    );
+    return FOOD_EMOJI_MAP[FOOD_ALIASES[normalized]] || "🍽️";
   }
 
-  for (const [key, emoji] of Object.entries(
-    FOOD_EMOJI_MAP
-  )) {
-    if (
+  const directMatch = Object.keys(FOOD_EMOJI_MAP).find(
+    (key) =>
       normalized.includes(key) ||
       key.includes(normalized)
-    ) {
-      return emoji;
-    }
+  );
+
+  if (directMatch) {
+    return FOOD_EMOJI_MAP[directMatch];
   }
 
-  for (const [alias, canonical] of Object.entries(
-    FOOD_ALIASES
-  )) {
-    if (
-      normalized.includes(alias) ||
-      alias.includes(normalized)
-    ) {
-      return (
-        FOOD_EMOJI_MAP[canonical] ||
-        "🍽️"
-      );
-    }
+  const aliasMatch = Object.keys(FOOD_ALIASES).find(
+    (key) =>
+      normalized.includes(key) ||
+      key.includes(normalized)
+  );
+
+  if (aliasMatch) {
+    return FOOD_EMOJI_MAP[FOOD_ALIASES[aliasMatch]] || "🍽️";
+  }
+
+  if (
+    normalized.includes("meat") ||
+    normalized.includes("mince")
+  ) {
+    return "🥩";
+  }
+
+  if (
+    normalized.includes("fish") ||
+    normalized.includes("seafood")
+  ) {
+    return "🐟";
+  }
+
+  if (
+    normalized.includes("vegetable") ||
+    normalized.includes("greens")
+  ) {
+    return "🥬";
+  }
+
+  if (
+    normalized.includes("fruit") ||
+    normalized.includes("berry")
+  ) {
+    return "🍎";
+  }
+
+  if (
+    normalized.includes("nut") ||
+    normalized.includes("seed")
+  ) {
+    return "🥜";
+  }
+
+  if (
+    normalized.includes("sauce") ||
+    normalized.includes("paste") ||
+    normalized.includes("dressing")
+  ) {
+    return "🫙";
+  }
+
+  if (
+    normalized.includes("spice") ||
+    normalized.includes("seasoning")
+  ) {
+    return "🌿";
+  }
+
+  if (
+    normalized.includes("oil") ||
+    normalized.includes("fat")
+  ) {
+    return "🫒";
+  }
+
+  if (
+    normalized.includes("flour") ||
+    normalized.includes("grain")
+  ) {
+    return "🌾";
   }
 
   return "🍽️";
 }
 
-function getAllergenInfo(name: string) {
-  const normalized =
-    normalizeFoodName(name);
+/* =========================================================
+   ALLERGEN SYSTEM
+   ========================================================= */
 
-  if (
-    /shrimp|prawn|crab|lobster|oyster|mussel|clam|squid|octopus|shellfish/.test(
-      normalized
-    )
-  ) {
+function getAllergenInfo(name: string) {
+  const value = normalizeIngredientName(name);
+
+  const shellfish = [
+    "shrimp",
+    "prawn",
+    "crab",
+    "lobster",
+    "mussel",
+    "clam",
+    "oyster",
+    "shellfish",
+    "squid",
+    "octopus",
+  ];
+
+  const gluten = [
+    "bread",
+    "flour",
+    "pasta",
+    "wheat",
+    "barley",
+    "rye",
+  ];
+
+  const dairy = [
+    "milk",
+    "cheese",
+    "yogurt",
+    "yoghurt",
+    "cream",
+    "butter",
+    "mozzarella",
+    "parmesan",
+    "cheddar",
+    "feta",
+    "ricotta",
+  ];
+
+  const nuts = [
+    "peanut",
+    "almond",
+    "cashew",
+    "walnut",
+    "pistachio",
+    "hazelnut",
+    "nut",
+  ];
+
+  const soy = [
+    "soy",
+    "soya",
+    "tofu",
+    "edamame",
+  ];
+
+  if (shellfish.some((item) => value.includes(item))) {
     return {
       label: "SHELLFISH",
       className: "bg-[#ff7043]",
     };
   }
 
-  if (
-    /milk|cheese|cheddar|mozzarella|parmesan|feta|ricotta|yogurt|yoghurt|cream|butter|dairy/.test(
-      normalized
-    )
-  ) {
-    return {
-      label: "DAIRY",
-      className: "bg-[#ffe033]",
-    };
-  }
-
-  if (
-    /wheat|flour|bread|pasta|spaghetti|noodle|barley|rye|couscous|gluten/.test(
-      normalized
-    )
-  ) {
+  if (gluten.some((item) => value.includes(item))) {
     return {
       label: "GLUTEN",
       className: "bg-[#ffe033]",
     };
   }
 
-  if (
-    /peanut|almond|cashew|walnut|pistachio|hazelnut|nut/.test(
-      normalized
-    )
-  ) {
+  if (dairy.some((item) => value.includes(item))) {
     return {
-      label: "NUTS",
-      className: "bg-[#ff7043]",
+      label: "DAIRY",
+      className: "bg-[#3aa8ff] text-white",
     };
   }
 
-  if (
-    /soy|soya|tofu|edamame/.test(
-      normalized
-    )
-  ) {
+  if (nuts.some((item) => value.includes(item))) {
+    return {
+      label: "NUTS",
+      className: "bg-[#c78b52]",
+    };
+  }
+
+  if (soy.some((item) => value.includes(item))) {
     return {
       label: "SOY",
-      className: "bg-[#ffe033]",
+      className: "bg-[#72d84c]",
     };
   }
 
   return {
     label: "NO COMMON ALLERGEN",
-    className: "bg-[#72d84c]",
+    className: "bg-black text-white",
   };
+}
+
+/* =========================================================
+   VISUAL HELPERS
+   ========================================================= */
+
+const CARD_COLORS = [
+  "#ffe033",
+  "#72d84c",
+  "#3aa8ff",
+  "#ff7043",
+  "#ff9ecb",
+];
+
+function getCardAccent(index: number) {
+  return CARD_COLORS[index % CARD_COLORS.length];
 }
 
 function getCardRotation(index: number) {
   const rotations = [
-    "-rotate-1",
-    "rotate-1",
-    "-rotate-1",
-    "rotate-1",
-    "rotate-0",
-    "-rotate-1",
+    "rotate-[-1deg]",
+    "rotate-[1deg]",
+    "rotate-[-0.5deg]",
+    "rotate-[1.5deg]",
+    "rotate-[-1.5deg]",
+    "rotate-[0.5deg]",
   ];
 
   return rotations[index % rotations.length];
 }
 
-function getCardAccent(index: number) {
-  const accents = [
-    "#ffe033",
-    "#72d84c",
-    "#3aa8ff",
-    "#ff7043",
-    "#ffe033",
-    "#72d84c",
-  ];
-
-  return accents[index % accents.length];
-}
+/* =========================================================
+   COMPONENT
+   ========================================================= */
 
 export default function KitchenUpload() {
-  const fileInputRef =
-    useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const photoUrlsRef = useRef<string[]>([]);
 
-  const photoUrlsRef =
-    useRef<string[]>([]);
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
-  const [photos, setPhotos] =
-    useState<UploadedPhoto[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const [inventory, setInventory] =
-    useState<InventoryItem[]>([]);
+  const [scanComplete, setScanComplete] = useState(false);
+  const [showUpload, setShowUpload] = useState(true);
 
-  const [recipes, setRecipes] =
-    useState<Recipe[]>([]);
-
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] =
     useState<Recipe | null>(null);
 
-  const [recipeImages, setRecipeImages] =
-    useState<Record<string, RecipeImage>>(
-      {}
-    );
-
-  const [isScanning, setIsScanning] =
-    useState(false);
-
-  const [isGenerating, setIsGenerating] =
-    useState(false);
-
-  const [isLoadingMore, setIsLoadingMore] =
-    useState(false);
-
-  const [scanComplete, setScanComplete] =
-    useState(false);
-
-  const [showUpload, setShowUpload] =
-    useState(true);
-
-  const [showCuisines, setShowCuisines] =
-    useState(false);
-
-  const [recipeSort, setRecipeSort] =
-    useState("best");
-
+  const [recipeSort, setRecipeSort] = useState("best");
   const [difficultyFilter, setDifficultyFilter] =
     useState("all");
+
+  const [recipeImages, setRecipeImages] = useState<
+    Record<string, RecipeImage>
+  >({});
 
   const [filters, setFilters] =
     useState<DinnerFilters>({
@@ -640,131 +691,190 @@ export default function KitchenUpload() {
       cuisines: [],
     });
 
+  const [showCuisines, setShowCuisines] = useState(false);
+
+  /* =========================================================
+     FILTER OPTIONS
+     ========================================================= */
+
+  const foodStyles = [
+    "Vegan",
+    "Vegetarian",
+    "Low Carb",
+    "Keto",
+    "Low Calorie",
+    "High Protein",
+    "Comfort Food",
+  ];
+
+  const appliances = [
+    "Stove",
+    "Oven",
+    "Air Fryer",
+    "No Cooking",
+  ];
+
+  const cuisines = [
+    "Mediterranean",
+    "Middle Eastern",
+    "Italian",
+    "Asian",
+    "Japanese",
+    "Korean",
+    "Chinese",
+    "Indian",
+    "Mexican",
+    "American",
+    "Portuguese",
+    "French",
+    "Greek",
+    "Turkish",
+    "Thai",
+    "Spanish",
+  ];
+
+  /* =========================================================
+     SORTING
+     ========================================================= */
+
   const sortedRecipes = useMemo(() => {
-    let filtered = [...recipes];
+    let copy = [...recipes];
 
     if (difficultyFilter !== "all") {
-      filtered = filtered.filter(
-        (recipe) =>
-          recipe.difficulty?.toLowerCase() ===
-          difficultyFilter
-      );
+      copy = copy.filter((recipe) => {
+        const difficulty =
+          recipe.difficulty?.toLowerCase() || "";
+
+        return difficulty.includes(
+          difficultyFilter.toLowerCase()
+        );
+      });
     }
 
-    filtered.sort((a, b) => {
-      if (recipeSort === "complete") {
-        return (
-          (a.missing_ingredients?.length ||
-            0) -
-          (b.missing_ingredients?.length ||
-            0)
+    switch (recipeSort) {
+      case "complete":
+        return copy.sort((a, b) => {
+          const aMissing =
+            a.missing_ingredients?.length || 0;
+
+          const bMissing =
+            b.missing_ingredients?.length || 0;
+
+          if (aMissing !== bMissing) {
+            return aMissing - bMissing;
+          }
+
+          return (
+            b.match_percentage -
+            a.match_percentage
+          );
+        });
+
+      case "missing":
+        return copy.sort((a, b) => {
+          const aMissing =
+            a.missing_ingredients?.length || 0;
+
+          const bMissing =
+            b.missing_ingredients?.length || 0;
+
+          return aMissing - bMissing;
+        });
+
+      case "fastest":
+        return copy.sort(
+          (a, b) =>
+            a.total_time_minutes -
+            b.total_time_minutes
         );
-      }
 
-      if (recipeSort === "missing") {
-        return (
-          (a.missing_ingredients?.length ||
-            0) -
-          (b.missing_ingredients?.length ||
-            0)
+      case "easiest":
+        return copy.sort((a, b) => {
+          const difficultyScore = (
+            difficulty: string
+          ) => {
+            const value =
+              difficulty.toLowerCase();
+
+            if (value.includes("easy")) return 1;
+            if (value.includes("medium")) return 2;
+            if (value.includes("hard")) return 3;
+
+            return 2;
+          };
+
+          return (
+            difficultyScore(a.difficulty) -
+            difficultyScore(b.difficulty)
+          );
+        });
+
+      case "best":
+      default:
+        return copy.sort(
+          (a, b) =>
+            b.match_percentage -
+            a.match_percentage
         );
-      }
-
-      if (recipeSort === "fastest") {
-        return (
-          a.total_time_minutes -
-          b.total_time_minutes
-        );
-      }
-
-      if (recipeSort === "easiest") {
-        const order: Record<
-          string,
-          number
-        > = {
-          easy: 1,
-          medium: 2,
-          hard: 3,
-        };
-
-        return (
-          (order[
-            a.difficulty?.toLowerCase()
-          ] || 99) -
-          (order[
-            b.difficulty?.toLowerCase()
-          ] || 99)
-        );
-      }
-
-      return (
-        b.match_percentage -
-        a.match_percentage
-      );
-    });
-
-    return filtered;
+    }
   }, [
     recipes,
     recipeSort,
     difficultyFilter,
   ]);
 
-  function cleanupPhotoUrls() {
-    photoUrlsRef.current.forEach((url) => {
-      URL.revokeObjectURL(url);
-    });
+  /* =========================================================
+     UPLOAD HANDLING
+     ========================================================= */
 
-    photoUrlsRef.current = [];
-  }
-
-  function clearPhotos() {
-    cleanupPhotoUrls();
-    setPhotos([]);
-  }
-
-  function addPhotos(
-    files: File[]
+  function addFiles(
+    files: FileList | File[]
   ) {
-    const imageFiles = files.filter(
+    const incoming = Array.from(files).filter(
       (file) =>
         file.type.startsWith("image/")
     );
 
-    const remaining =
-      Math.max(0, 3 - photos.length);
+    if (!incoming.length) return;
 
-    const filesToAdd =
-      imageFiles.slice(0, remaining);
+    setPhotos((current) => {
+      const remaining =
+        3 - current.length;
 
-    const newPhotos =
-      filesToAdd.map((file) => {
-        const preview =
-          URL.createObjectURL(file);
+      if (remaining <= 0) {
+        return current;
+      }
 
-        photoUrlsRef.current.push(preview);
+      const selected =
+        incoming.slice(0, remaining);
 
-        return {
-          id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
-          file,
-          preview,
-        };
-      });
+      const newPhotos =
+        selected.map((file) => {
+          const preview =
+            URL.createObjectURL(file);
 
-    setPhotos((current) => [
-      ...current,
-      ...newPhotos,
-    ]);
+          photoUrlsRef.current.push(
+            preview
+          );
+
+          return {
+            id:
+              `${Date.now()}-${Math.random()}`,
+            file,
+            preview,
+          };
+        });
+
+      return [...current, ...newPhotos];
+    });
   }
 
   function handleFileChange(
     event: ChangeEvent<HTMLInputElement>
   ) {
-    const files = Array.from(
-      event.target.files || []
-    );
-
-    addPhotos(files);
+    if (event.target.files) {
+      addFiles(event.target.files);
+    }
 
     event.target.value = "";
   }
@@ -774,11 +884,9 @@ export default function KitchenUpload() {
   ) {
     event.preventDefault();
 
-    const files = Array.from(
-      event.dataTransfer.files || []
-    );
-
-    addPhotos(files);
+    if (event.dataTransfer.files) {
+      addFiles(event.dataTransfer.files);
+    }
   }
 
   function removePhoto(id: string) {
@@ -805,14 +913,28 @@ export default function KitchenUpload() {
     });
   }
 
+  function clearPhotos() {
+    photos.forEach((photo) => {
+      URL.revokeObjectURL(
+        photo.preview
+      );
+    });
+
+    photoUrlsRef.current = [];
+    setPhotos([]);
+  }
+
+  /* =========================================================
+     SCAN KITCHEN
+     ========================================================= */
+
   async function scanKitchen() {
     if (!photos.length) return;
 
     setIsScanning(true);
 
     try {
-      const formData =
-        new FormData();
+      const formData = new FormData();
 
       photos.forEach((photo) => {
         formData.append(
@@ -829,25 +951,25 @@ export default function KitchenUpload() {
         }
       );
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
         throw new Error(
-          "Kitchen scan failed"
+          data?.error ||
+            data?.message ||
+            `Kitchen scan failed (${response.status})`
         );
       }
 
-      const data =
-        await response.json();
-
-      const items =
-        Array.isArray(data?.items)
-          ? data.items
-          : [];
+      const detectedItems =
+        data?.items ||
+        data?.inventory ||
+        [];
 
       setInventory(
-        items.map(
+        detectedItems.map(
           (item: InventoryItem) => ({
-            name:
-              item.name || "Unknown ingredient",
+            name: item.name || "Unknown",
             quantity:
               item.quantity || "",
             location:
@@ -875,8 +997,13 @@ export default function KitchenUpload() {
         error
       );
 
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unknown scan error";
+
       alert(
-        "We couldn't scan the kitchen. Please try again."
+        `We couldn't scan the kitchen. ${message}`
       );
     } finally {
       setIsScanning(false);
@@ -893,14 +1020,13 @@ export default function KitchenUpload() {
     value: string
   ) {
     setInventory((current) =>
-      current.map(
-        (item, itemIndex) =>
-          itemIndex === index
-            ? {
-                ...item,
-                [field]: value,
-              }
-            : item
+      current.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item
       )
     );
   }
@@ -988,56 +1114,6 @@ export default function KitchenUpload() {
   }
 
   /* =========================================================
-     GOOGLE IMAGE SEARCH
-     ========================================================= */
-
-  async function loadRecipeImages(
-    recipeList: Recipe[]
-  ) {
-    try {
-      const queries =
-        recipeList.map(
-          (recipe) => recipe.name
-        );
-
-      const response = await fetch(
-        "/api/images",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            queries,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        return;
-      }
-
-      const data =
-        await response.json();
-
-      if (data?.images) {
-        setRecipeImages(
-          (current) => ({
-            ...current,
-            ...data.images,
-          })
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Could not load recipe images:",
-        error
-      );
-    }
-  }
-
-  /* =========================================================
      GENERATE DINNER
      ========================================================= */
 
@@ -1065,17 +1141,8 @@ export default function KitchenUpload() {
       );
 
       if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Dinner API error:",
-          errorText
-        );
-
         throw new Error(
-          errorText ||
-            "Dinner generation failed"
+          "Dinner generation failed"
         );
       }
 
@@ -1091,12 +1158,6 @@ export default function KitchenUpload() {
 
       setRecipeSort("best");
       setDifficultyFilter("all");
-
-      if (generatedRecipes.length) {
-        loadRecipeImages(
-          generatedRecipes
-        );
-      }
 
       setTimeout(() => {
         document
@@ -1126,12 +1187,7 @@ export default function KitchenUpload() {
      ========================================================= */
 
   async function generateMoreRecipes() {
-    if (
-      !inventory.length ||
-      isLoadingMore
-    ) {
-      return;
-    }
+    if (!inventory.length || isLoadingMore) return;
 
     setIsLoadingMore(true);
 
@@ -1152,58 +1208,36 @@ export default function KitchenUpload() {
       );
 
       if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "More dinner API error:",
-          errorText
-        );
-
         throw new Error(
-          errorText ||
-            "More dinner generation failed"
+          "More dinner generation failed"
         );
       }
 
-      const data =
-        await response.json();
-
-      const freshRecipes: Recipe[] =
+      const data = await response.json();
+      const generatedRecipes =
         Array.isArray(data?.recipes)
           ? data.recipes
           : [];
 
-      const existingNames =
-        new Set(
-          recipes.map((recipe) =>
-            recipe.name
-              .toLowerCase()
-              .trim()
+      const existingNames = new Set(
+        recipes.map((recipe) =>
+          recipe.name.trim().toLowerCase()
+        )
+      );
+
+      const freshRecipes = generatedRecipes.filter(
+        (recipe: Recipe) =>
+          recipe?.name &&
+          !existingNames.has(
+            recipe.name.trim().toLowerCase()
           )
-        );
+      );
 
-      const uniqueFreshRecipes =
-        freshRecipes.filter(
-          (recipe) =>
-            !existingNames.has(
-              recipe.name
-                .toLowerCase()
-                .trim()
-            )
-        );
-
-      if (
-        uniqueFreshRecipes.length
-      ) {
+      if (freshRecipes.length) {
         setRecipes((current) => [
           ...current,
-          ...uniqueFreshRecipes,
+          ...freshRecipes,
         ]);
-
-        await loadRecipeImages(
-          uniqueFreshRecipes
-        );
       }
     } catch (error) {
       console.error(
@@ -1212,7 +1246,7 @@ export default function KitchenUpload() {
       );
 
       alert(
-        "We couldn't find more dinner ideas. Please try again."
+        "We couldn't find more recipes right now. Please try again."
       );
     } finally {
       setIsLoadingMore(false);
@@ -1492,7 +1526,9 @@ export default function KitchenUpload() {
 
   return (
     <main className="min-h-screen bg-[#fffaf0] text-[#171717]">
-      {/* HERO */}
+      {/* =====================================================
+          HERO
+      ===================================================== */}
 
       <section className="relative overflow-hidden border-b-4 border-black bg-[#fffaf0]">
         <div className="absolute -right-8 top-10 rotate-12 text-[100px] md:text-[150px]">
@@ -1533,35 +1569,12 @@ export default function KitchenUpload() {
             </p>
           </div>
 
-          {!scanComplete && (
-            <div className="mt-12">
-              <button
-                type="button"
-                onClick={() =>
-                  fileInputRef.current?.click()
-                }
-                className="mr-3 rounded-full border-3 border-black bg-[#ffe033] px-7 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1"
-              >
-                SHOW US YOUR KITCHEN
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setInventory([]);
-                  setScanComplete(true);
-                  setShowUpload(false);
-                }}
-                className="mt-4 rounded-full border-3 border-black bg-white px-7 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1 md:mt-0"
-              >
-                I'LL JUST TYPE IT
-              </button>
-            </div>
-          )}
         </div>
       </section>
 
-      {/* UPLOAD */}
+      {/* =====================================================
+          UPLOAD
+      ===================================================== */}
 
       {showUpload && !scanComplete && (
         <section className="bg-[#72d84c] px-5 py-12 md:px-8 md:py-20">
@@ -1622,22 +1635,22 @@ export default function KitchenUpload() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 text-sm font-black uppercase md:grid-cols-4">
-              <UploadSuggestion emoji="🧊">
-                Fridge
-              </UploadSuggestion>
-
-              <UploadSuggestion emoji="🍳">
-                Counter
-              </UploadSuggestion>
-
-              <UploadSuggestion emoji="🗄️">
-                Cupboard
-              </UploadSuggestion>
-
-              <UploadSuggestion emoji="🍱">
-                Leftovers
-              </UploadSuggestion>
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setInventory([]);
+                  setScanComplete(true);
+                  setShowUpload(false);
+                  window.scrollTo({
+                    top: 0,
+                    behavior: "smooth",
+                  });
+                }}
+                className="rounded-full border-3 border-black bg-white px-8 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1"
+              >
+                I'LL JUST TYPE IT
+              </button>
             </div>
 
             {photos.length > 0 && (
@@ -1695,7 +1708,9 @@ export default function KitchenUpload() {
         </section>
       )}
 
-      {/* INVENTORY */}
+      {/* =====================================================
+          INVENTORY
+      ===================================================== */}
 
       {scanComplete && (
         <section className="bg-[#171717] px-5 py-12 text-white md:px-8 md:py-20">
@@ -1740,7 +1755,7 @@ export default function KitchenUpload() {
 
                     return (
                       <div
-                        key={`${item.name}-${index}`}
+                        key={`inventory-${index}`}
                         className={`rounded-[28px] border-3 border-black bg-white p-5 text-black shadow-[5px_5px_0_#ffe033] ${getCardRotation(
                           index
                         )}`}
@@ -1833,7 +1848,9 @@ export default function KitchenUpload() {
         </section>
       )}
 
-      {/* FILTERS */}
+      {/* =====================================================
+          FILTERS
+      ===================================================== */}
 
       {scanComplete && (
         <section className="bg-[#ffe033] px-5 py-12 md:px-8 md:py-20">
@@ -1951,27 +1968,25 @@ export default function KitchenUpload() {
                   {[
                     "hot",
                     "cold",
-                  ].map(
-                    (temperature) => (
-                      <FilterButton
-                        key={temperature}
-                        active={
-                          filters.temperature ===
-                          temperature
-                        }
-                        onClick={() =>
-                          setFilters(
-                            (current) => ({
-                              ...current,
-                              temperature,
-                            })
-                          )
-                        }
-                      >
-                        {temperature}
-                      </FilterButton>
-                    )
-                  )}
+                  ].map((temperature) => (
+                    <FilterButton
+                      key={temperature}
+                      active={
+                        filters.temperature ===
+                        temperature
+                      }
+                      onClick={() =>
+                        setFilters(
+                          (current) => ({
+                            ...current,
+                            temperature,
+                          })
+                        )
+                      }
+                    >
+                      {temperature}
+                    </FilterButton>
+                  ))}
                 </div>
               </FilterSection>
 
@@ -2037,14 +2052,25 @@ export default function KitchenUpload() {
         </section>
       )}
 
-      {/* GENERATING */}
+      {/* =====================================================
+          GENERATING
+      ===================================================== */}
 
       {isGenerating && (
         <section className="bg-[#ff7043] px-5 py-20 md:px-8">
-          <div className="mx-auto max-w-5xl text-center">
-            <div className="text-7xl">
+          <motion.div
+            className="mx-auto max-w-5xl text-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+          >
+            <motion.div
+              className="text-7xl"
+              animate={{ rotate: [0, -8, 8, 0], scale: [1, 1.08, 1.08, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            >
               🍳
-            </div>
+            </motion.div>
 
             <h2 className="mt-8 text-6xl font-black uppercase leading-[0.85] tracking-[-0.05em] md:text-8xl">
               THINKING
@@ -2057,11 +2083,13 @@ export default function KitchenUpload() {
               kitchen with your
               preferences.
             </p>
-          </div>
+          </motion.div>
         </section>
       )}
 
-      {/* RECIPE RESULTS */}
+      {/* =====================================================
+          RECIPE RESULTS
+      ===================================================== */}
 
       {!isGenerating &&
         recipes.length > 0 && (
@@ -2070,7 +2098,12 @@ export default function KitchenUpload() {
             className="bg-[#fffaf0] px-5 py-12 md:px-8 md:py-20"
           >
             <div className="mx-auto max-w-7xl">
-              <div className="mb-10">
+              <motion.div
+                className="mb-10"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45 }}
+              >
                 <div className="text-xs font-black uppercase tracking-[0.18em] opacity-50">
                   DINNER IS SERVED
                 </div>
@@ -2080,11 +2113,16 @@ export default function KitchenUpload() {
                   <br />
                   OPTIONS.
                 </h2>
-              </div>
+              </motion.div>
 
               {/* SORTING */}
 
-              <div className="mb-10 rounded-[28px] border-3 border-black bg-white p-5 shadow-[5px_5px_0_#171717]">
+              <motion.div
+                className="mb-10 rounded-[28px] border-3 border-black bg-white p-5 shadow-[5px_5px_0_#171717]"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.08 }}
+              >
                 <div className="flex flex-col gap-6">
                   <div>
                     <div className="text-xs font-black uppercase tracking-[0.18em] opacity-50">
@@ -2194,7 +2232,7 @@ export default function KitchenUpload() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {sortedRecipes.length ===
               0 ? (
@@ -2221,233 +2259,260 @@ export default function KitchenUpload() {
                   </button>
                 </div>
               ) : (
-                <>
-                  <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    {sortedRecipes.map(
-                      (
-                        recipe,
-                        index
-                      ) => {
-                        const image =
-                          recipeImages[
-                            recipe.name
-                          ];
+                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                  {sortedRecipes.map(
+                    (
+                      recipe,
+                      index
+                    ) => {
+                      const image =
+                        recipeImages[
+                          recipe.name
+                        ];
 
-                        const accent =
-                          getCardAccent(
+                      const accent =
+                        getCardAccent(
+                          index
+                        );
+
+                      return (
+                        <motion.article
+                          key={`${recipe.name}-${index}`}
+                          initial={{ opacity: 0, y: 35, scale: 0.96, rotate: 0 }}
+                          animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+                          whileHover={{ y: -10, rotate: index % 2 === 0 ? -1.2 : 1.2, scale: 1.015 }}
+                          whileTap={{ scale: 0.985 }}
+                          transition={{
+                            duration: 0.45,
+                            delay: Math.min(index * 0.07, 0.42),
+                            type: "spring",
+                            stiffness: 180,
+                            damping: 16,
+                          }}
+                          className={`group overflow-hidden rounded-[32px] border-4 border-black bg-white shadow-[7px_7px_0_#171717] ${getCardRotation(
                             index
-                          );
+                          )}`}
+                        >
+                          {/* RECIPE IMAGE */}
 
-                        return (
-                          <article
-                            key={`${recipe.name}-${index}`}
-                            className={`group overflow-hidden rounded-[32px] border-4 border-black bg-white shadow-[7px_7px_0_#171717] transition-transform hover:-translate-y-2 ${getCardRotation(
-                              index
-                            )}`}
+                          <div
+                            className="relative min-h-[260px] overflow-hidden border-b-4 border-black"
+                            style={{
+                              background:
+                                accent,
+                            }}
                           >
-                            <div
-                              className="relative min-h-[260px] overflow-hidden border-b-4 border-black"
-                              style={{
-                                background:
-                                  accent,
-                              }}
-                            >
-                              {image?.thumbnail ? (
-                                <img
-                                  src={
-                                    image.thumbnail
-                                  }
-                                  alt={
-                                    recipe.name
-                                  }
-                                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                />
-                              ) : (
-                                <>
-                                  <div className="absolute -right-5 -top-8 text-[130px] opacity-20">
-                                    {getIngredientEmoji(
-                                      recipe
-                                        .ingredients?.[0]
-                                        ?.name ||
-                                        "food"
-                                    )}
-                                  </div>
-
-                                  <div className="absolute bottom-[-25px] left-[15%] rotate-[-12deg] text-7xl">
-                                    {getIngredientEmoji(
-                                      recipe
-                                        .ingredients?.[1]
-                                        ?.name ||
-                                        "vegetable"
-                                    )}
-                                  </div>
-
-                                  <div className="absolute right-[20%] top-[42%] rotate-[8deg] text-6xl">
-                                    {getIngredientEmoji(
-                                      recipe
-                                        .ingredients?.[2]
-                                        ?.name ||
-                                        "food"
-                                    )}
-                                  </div>
-                                </>
-                              )}
-
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
-
-                              <div className="relative z-10 flex items-start justify-between p-6">
-                                <div className="rounded-full border-2 border-black bg-white px-3 py-2 text-xs font-black shadow-[3px_3px_0_#171717]">
-                                  #
-                                  {String(
-                                    index + 1
-                                  ).padStart(
-                                    2,
-                                    "0"
+                            {image?.thumbnail ? (
+                              <img
+                                src={
+                                  image.thumbnail
+                                }
+                                alt={
+                                  recipe.name
+                                }
+                                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                              />
+                            ) : (
+                              <>
+                                <div className="absolute -right-5 -top-8 text-[130px] opacity-20">
+                                  {getIngredientEmoji(
+                                    recipe
+                                      .ingredients?.[0]
+                                      ?.name ||
+                                      "food"
                                   )}
                                 </div>
 
-                                <div className="rounded-full border-2 border-black bg-[#72d84c] px-3 py-2 text-xs font-black shadow-[3px_3px_0_#171717]">
-                                  {
-                                    recipe.match_percentage
-                                  }
-                                  % MATCH
-                                </div>
-                              </div>
-
-                              {image?.source && (
-                                <a
-                                  href={
-                                    image.source
-                                  }
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={(
-                                    event
-                                  ) =>
-                                    event.stopPropagation()
-                                  }
-                                  className="absolute bottom-3 right-4 z-10 text-[9px] font-bold uppercase text-white/70 hover:text-white"
-                                >
-                                  Image source
-                                </a>
-                              )}
-                            </div>
-
-                            <div className="p-6">
-                              <div className="mb-3 flex flex-wrap gap-2">
-                                <span className="rounded-full border-2 border-black bg-[#ffe033] px-3 py-1 text-[10px] font-black uppercase">
-                                  {
-                                    recipe.total_time_minutes
-                                  }{" "}
-                                  MIN
-                                </span>
-
-                                <span className="rounded-full border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase">
-                                  {
-                                    recipe.difficulty
-                                  }
-                                </span>
-                              </div>
-
-                              <h3 className="text-3xl font-black uppercase leading-[0.9] tracking-[-0.04em]">
-                                {
-                                  recipe.name
-                                }
-                              </h3>
-
-                              <p className="mt-4 line-clamp-3 text-sm font-bold leading-relaxed opacity-70">
-                                {
-                                  recipe.description
-                                }
-                              </p>
-
-                              <div className="mt-5 flex items-center justify-between border-t-2 border-black/10 pt-5">
-                                <div>
-                                  <div className="text-[10px] font-black uppercase opacity-40">
-                                    MISSING
-                                  </div>
-
-                                  <div className="text-lg font-black">
-                                    {
-                                      recipe
-                                        .missing_ingredients
-                                        ?.length ||
-                                      0
-                                    }
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <div className="text-[10px] font-black uppercase opacity-40">
-                                    SERVES
-                                  </div>
-
-                                  <div className="text-lg font-black">
-                                    {
-                                      recipe.servings
-                                    }
-                                  </div>
-                                </div>
-                              </div>
-
-                              {recipe.tags?.length >
-                                0 && (
-                                <div className="mt-5 flex flex-wrap gap-2">
-                                  {recipe.tags
-                                    .slice(
-                                      0,
-                                      3
-                                    )
-                                    .map(
-                                      (
-                                        tag
-                                      ) => (
-                                        <span
-                                          key={
-                                            tag
-                                          }
-                                          className="text-[10px] font-black uppercase opacity-50"
-                                        >
-                                          #
-                                          {tag}
-                                        </span>
-                                      )
-                                    )}
-                                </div>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSelectedRecipe(
+                                <div className="absolute bottom-[-25px] left-[15%] rotate-[-12deg] text-7xl">
+                                  {getIngredientEmoji(
                                     recipe
-                                  )
-                                }
-                                className="mt-7 w-full rounded-full border-3 border-black bg-[#171717] px-5 py-4 text-sm font-black uppercase text-white transition-transform hover:-translate-y-1"
-                              >
-                                SEE FULL RECIPE →
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      }
-                    )}
-                  </div>
+                                      .ingredients?.[1]
+                                      ?.name ||
+                                      "vegetable"
+                                  )}
+                                </div>
 
-                  <button
-                    type="button"
-                    onClick={
-                      generateMoreRecipes
+                                <div className="absolute right-[20%] top-[42%] rotate-[8deg] text-6xl">
+                                  {getIngredientEmoji(
+                                    recipe
+                                      .ingredients?.[2]
+                                      ?.name ||
+                                      "food"
+                                  )}
+                                </div>
+                              </>
+                            )}
+
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
+
+                            <div className="relative z-10 flex items-start justify-between p-6">
+                              <div className="rounded-full border-2 border-black bg-white px-3 py-2 text-xs font-black shadow-[3px_3px_0_#171717]">
+                                #
+                                {String(
+                                  index + 1
+                                ).padStart(
+                                  2,
+                                  "0"
+                                )}
+                              </div>
+
+                              <div className="rounded-full border-2 border-black bg-[#72d84c] px-3 py-2 text-xs font-black shadow-[3px_3px_0_#171717]">
+                                {
+                                  recipe.match_percentage
+                                }
+                                % MATCH
+                              </div>
+                            </div>
+
+                            {image?.source && (
+                              <a
+                                href={
+                                  image.source
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(
+                                  event
+                                ) =>
+                                  event.stopPropagation()
+                                }
+                                className="absolute bottom-3 right-4 z-10 text-[9px] font-bold uppercase text-white/70 hover:text-white"
+                              >
+                                Image source
+                              </a>
+                            )}
+                          </div>
+
+                          {/* RECIPE BODY */}
+
+                          <div className="p-6">
+                            <div className="mb-3 flex flex-wrap gap-2">
+                              <span className="rounded-full border-2 border-black bg-[#ffe033] px-3 py-1 text-[10px] font-black uppercase">
+                                {
+                                  recipe.total_time_minutes
+                                }{" "}
+                                MIN
+                              </span>
+
+                              <span className="rounded-full border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase">
+                                {
+                                  recipe.difficulty
+                                }
+                              </span>
+                            </div>
+
+                            <h3 className="text-3xl font-black uppercase leading-[0.9] tracking-[-0.04em]">
+                              {
+                                recipe.name
+                              }
+                            </h3>
+
+                            <p className="mt-4 line-clamp-3 text-sm font-bold leading-relaxed opacity-70">
+                              {
+                                recipe.description
+                              }
+                            </p>
+
+                            <div className="mt-5 flex items-center justify-between border-t-2 border-black/10 pt-5">
+                              <div>
+                                <div className="text-[10px] font-black uppercase opacity-40">
+                                  MISSING
+                                </div>
+
+                                <div className="text-lg font-black">
+                                  {
+                                    recipe
+                                      .missing_ingredients
+                                      ?.length ||
+                                    0
+                                  }
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="text-[10px] font-black uppercase opacity-40">
+                                  SERVES
+                                </div>
+
+                                <div className="text-lg font-black">
+                                  {
+                                    recipe.servings
+                                  }
+                                </div>
+                              </div>
+                            </div>
+
+                            {recipe.tags?.length >
+                              0 && (
+                              <div className="mt-5 flex flex-wrap gap-2">
+                                {recipe.tags
+                                  .slice(
+                                    0,
+                                    3
+                                  )
+                                  .map(
+                                    (
+                                      tag
+                                    ) => (
+                                      <span
+                                        key={
+                                          tag
+                                        }
+                                        className="text-[10px] font-black uppercase opacity-50"
+                                      >
+                                        #
+                                        {tag}
+                                      </span>
+                                    )
+                                  )}
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedRecipe(
+                                  recipe
+                                )
+                              }
+                              className="mt-7 w-full rounded-full border-3 border-black bg-[#171717] px-5 py-4 text-sm font-black uppercase text-white transition-transform hover:-translate-y-1"
+                            >
+                              SEE FULL RECIPE →
+                            </button>
+                          </div>
+                        </motion.article>
+                      );
                     }
-                    disabled={isLoadingMore}
-                    className="mt-12 w-full rounded-[28px] border-4 border-black bg-[#ffe033] px-8 py-6 text-xl font-black uppercase shadow-[7px_7px_0_#171717] transition-transform hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60 md:text-3xl"
-                  >
-                    {isLoadingMore
-                      ? "FINDING MORE DINNER..."
-                      : "SHOW ME MORE RECIPES →"}
-                  </button>
-                </>
+                  )}
+                </div>
               )}
+
+              <motion.div
+                className="mt-12 flex justify-center"
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35, duration: 0.4 }}
+              >
+                <motion.button
+                  type="button"
+                  onClick={generateMoreRecipes}
+                  disabled={isLoadingMore}
+                  whileHover={{ y: -5, rotate: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="group rounded-full border-4 border-black bg-[#ffe033] px-8 py-5 text-base font-black uppercase shadow-[6px_6px_0_#171717] disabled:cursor-not-allowed disabled:opacity-60 md:px-10 md:text-lg"
+                >
+                  <motion.span
+                    className="mr-3 inline-block"
+                    animate={isLoadingMore ? { rotate: 360 } : { rotate: 0 }}
+                    transition={isLoadingMore ? { duration: 0.8, repeat: Infinity, ease: "linear" } : { duration: 0.2 }}
+                  >
+                    ↻
+                  </motion.span>
+                  {isLoadingMore
+                    ? "FINDING MORE..."
+                    : "SHOW ME MORE RECIPES"}
+                </motion.button>
+              </motion.div>
             </div>
           </section>
         )}
@@ -2460,24 +2525,6 @@ export default function KitchenUpload() {
 /* =========================================================
    SMALL COMPONENTS
    ========================================================= */
-
-function UploadSuggestion({
-  emoji,
-  children,
-}: {
-  emoji: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-full border-2 border-black bg-white px-4 py-3 shadow-[3px_3px_0_#171717]">
-      <span className="text-xl">
-        {emoji}
-      </span>
-
-      <span>{children}</span>
-    </div>
-  );
-}
 
 function FilterSection({
   number,
