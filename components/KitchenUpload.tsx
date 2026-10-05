@@ -22,7 +22,6 @@ type DinnerFilters = {
   time: string;
   foodStyle: string[];
   appliance: string[];
-  temperature: string;
   cuisines: string[];
 };
 
@@ -720,7 +719,6 @@ export default function KitchenUpload() {
       time: "30",
       foodStyle: [],
       appliance: [],
-      temperature: "hot",
       cuisines: [],
     });
 
@@ -1359,7 +1357,6 @@ export default function KitchenUpload() {
       time: "30",
       foodStyle: [],
       appliance: [],
-      temperature: "hot",
       cuisines: [],
     });
 
@@ -2285,7 +2282,10 @@ export default function KitchenUpload() {
                         setFilters(
                           (current) => ({
                             ...current,
-                            time,
+                            time:
+                              current.time === time
+                                ? ""
+                                : time,
                           })
                         )
                       }
@@ -2352,42 +2352,10 @@ export default function KitchenUpload() {
                 </div>
               </FilterSection>
 
-              {/* TEMPERATURE */}
-
-              <FilterSection
-                number="04"
-                title="HOT OR COLD?"
-              >
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    "hot",
-                    "cold",
-                  ].map((temperature) => (
-                    <FilterButton
-                      key={temperature}
-                      active={
-                        filters.temperature ===
-                        temperature
-                      }
-                      onClick={() =>
-                        setFilters(
-                          (current) => ({
-                            ...current,
-                            temperature,
-                          })
-                        )
-                      }
-                    >
-                      {temperature}
-                    </FilterButton>
-                  ))}
-                </div>
-              </FilterSection>
-
               {/* CUISINES */}
 
               <FilterSection
-                number="05"
+                number="04"
                 title="TAKE IT SOMEWHERE?"
               >
                 <button
