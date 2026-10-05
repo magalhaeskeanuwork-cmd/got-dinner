@@ -1073,7 +1073,7 @@ export default function KitchenUpload() {
     setInventory((current) => [
       ...current,
       {
-        name: "New ingredient",
+        name: "",
         quantity: "",
         location: "unknown",
         category: "other",
@@ -1961,31 +1961,6 @@ export default function KitchenUpload() {
             </p>
           </div>
 
-          {!scanComplete && (
-            <div className="mt-12">
-              <button
-                type="button"
-                onClick={() =>
-                  fileInputRef.current?.click()
-                }
-                className="mr-3 rounded-full border-3 border-black bg-[#ffe033] px-7 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1"
-              >
-                SHOW US YOUR KITCHEN
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setInventory([]);
-                  setScanComplete(true);
-                  setShowUpload(false);
-                }}
-                className="mt-4 rounded-full border-3 border-black bg-white px-7 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1 md:mt-0"
-              >
-                I'LL JUST TYPE IT
-              </button>
-            </div>
-          )}
         </div>
       </section>
 
@@ -2052,23 +2027,17 @@ export default function KitchenUpload() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 text-sm font-black uppercase md:grid-cols-4">
-              <UploadSuggestion emoji="🧊">
-                Fridge
-              </UploadSuggestion>
-
-              <UploadSuggestion emoji="🍳">
-                Counter
-              </UploadSuggestion>
-
-              <UploadSuggestion emoji="🗄️">
-                Cupboard
-              </UploadSuggestion>
-
-              <UploadSuggestion emoji="🍱">
-                Leftovers
-              </UploadSuggestion>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setInventory([]);
+                setScanComplete(true);
+                setShowUpload(false);
+              }}
+              className="mt-6 w-full rounded-[24px] border-3 border-black bg-white px-6 py-5 text-lg font-black uppercase shadow-[6px_6px_0_#171717] transition-transform hover:-translate-y-1"
+            >
+              I'LL JUST TYPE IT
+            </button>
 
             {photos.length > 0 && (
               <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -2172,7 +2141,7 @@ export default function KitchenUpload() {
 
                     return (
                       <div
-                        key={`${item.name}-${index}`}
+                        key={`inventory-${index}`}
                         className={`rounded-[28px] border-3 border-black bg-white p-5 text-black shadow-[5px_5px_0_#ffe033] ${getCardRotation(
                           index
                         )}`}
@@ -2199,7 +2168,14 @@ export default function KitchenUpload() {
                                       .value
                                   )
                                 }
-                                className="w-full border-b-2 border-black bg-transparent text-xl font-black uppercase outline-none"
+                                placeholder="INGREDIENT NAME"
+                                autoFocus={
+                                  index ===
+                                    inventory.length - 1 &&
+                                  item.name === ""
+                                }
+                                aria-label="Ingredient name"
+                                className="w-full min-w-0 border-b-2 border-black bg-transparent text-xl font-black uppercase outline-none placeholder:text-black/30"
                               />
 
                               <input
@@ -2217,7 +2193,8 @@ export default function KitchenUpload() {
                                   )
                                 }
                                 placeholder="QUANTITY"
-                                className="mt-1 w-full bg-transparent text-xs font-bold uppercase outline-none placeholder:text-black/30"
+                                aria-label="Ingredient quantity"
+                                className="mt-1 w-full min-w-0 bg-transparent text-xs font-bold uppercase outline-none placeholder:text-black/30"
                               />
                             </div>
                           </div>
@@ -2942,24 +2919,6 @@ export default function KitchenUpload() {
 /* =========================================================
    SMALL COMPONENTS
    ========================================================= */
-
-function UploadSuggestion({
-  emoji,
-  children,
-}: {
-  emoji: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-full border-2 border-black bg-white px-4 py-3 shadow-[3px_3px_0_#171717]">
-      <span className="text-xl">
-        {emoji}
-      </span>
-
-      <span>{children}</span>
-    </div>
-  );
-}
 
 function FilterSection({
   number,
