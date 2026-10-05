@@ -1046,7 +1046,7 @@ export default function KitchenUpload() {
     setInventory((current) => [
       ...current,
       {
-        name: "New ingredient",
+        name: "",
         quantity: "",
         location: "unknown",
         category: "other",
@@ -1782,7 +1782,14 @@ export default function KitchenUpload() {
                                       .value
                                   )
                                 }
-                                className="w-full border-b-2 border-black bg-transparent text-xl font-black uppercase outline-none"
+                                placeholder="INGREDIENT NAME"
+                                autoFocus={
+                                  index ===
+                                    inventory.length - 1 &&
+                                  item.name === ""
+                                }
+                                aria-label="Ingredient name"
+                                className="w-full min-w-0 border-b-2 border-black bg-transparent text-xl font-black uppercase outline-none placeholder:text-black/30"
                               />
 
                               <input
@@ -1800,7 +1807,8 @@ export default function KitchenUpload() {
                                   )
                                 }
                                 placeholder="QUANTITY"
-                                className="mt-1 w-full bg-transparent text-xs font-bold uppercase outline-none placeholder:text-black/30"
+                                aria-label="Ingredient quantity"
+                                className="mt-1 w-full min-w-0 bg-transparent text-xs font-bold uppercase outline-none placeholder:text-black/30"
                               />
                             </div>
                           </div>
