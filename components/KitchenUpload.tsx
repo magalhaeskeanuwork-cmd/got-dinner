@@ -49,13 +49,6 @@ type Recipe = {
   tags: string[];
 };
 
-type RecipeImage = {
-  url: string | null;
-  thumbnail: string | null;
-  source: string | null;
-  title: string;
-} | null;
-
 type UploadedPhoto = {
   id: string;
   file: File;
@@ -678,10 +671,6 @@ export default function KitchenUpload() {
   const [difficultyFilter, setDifficultyFilter] =
     useState("all");
 
-  const [recipeImages, setRecipeImages] = useState<
-    Record<string, RecipeImage>
-  >({});
-
   const [filters, setFilters] =
     useState<DinnerFilters>({
       time: "30",
@@ -951,15 +940,14 @@ export default function KitchenUpload() {
         }
       );
 
-      const data = await response.json().catch(() => ({}));
-
       if (!response.ok) {
         throw new Error(
-          data?.error ||
-            data?.message ||
-            `Kitchen scan failed (${response.status})`
+          "Kitchen scan failed"
         );
       }
+
+      const data =
+        await response.json();
 
       const detectedItems =
         data?.items ||
@@ -997,13 +985,8 @@ export default function KitchenUpload() {
         error
       );
 
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown scan error";
-
       alert(
-        `We couldn't scan the kitchen. ${message}`
+        "We couldn't scan the kitchen. Please try again."
       );
     } finally {
       setIsScanning(false);
@@ -1046,7 +1029,7 @@ export default function KitchenUpload() {
     setInventory((current) => [
       ...current,
       {
-        name: "",
+        name: "New ingredient",
         quantity: "",
         location: "unknown",
         category: "other",
@@ -1159,6 +1142,7 @@ export default function KitchenUpload() {
       setRecipeSort("best");
       setDifficultyFilter("all");
 
+
       setTimeout(() => {
         document
           .getElementById(
@@ -1265,7 +1249,6 @@ export default function KitchenUpload() {
     setSelectedRecipe(null);
     setScanComplete(false);
     setShowUpload(true);
-    setRecipeImages({});
     setRecipeSort("best");
     setDifficultyFilter("all");
 
@@ -1288,11 +1271,6 @@ export default function KitchenUpload() {
      ========================================================= */
 
   if (selectedRecipe) {
-    const recipeImage =
-      recipeImages[
-        selectedRecipe.name
-      ];
-
     return (
       <main className="min-h-screen bg-[#3aa8ff] text-[#171717]">
         <section className="mx-auto max-w-6xl px-5 py-8 md:px-8 md:py-12">
@@ -1308,28 +1286,13 @@ export default function KitchenUpload() {
 
           <div className="overflow-hidden rounded-[36px] border-4 border-black bg-white shadow-[8px_8px_0_#171717]">
             <div className="relative h-[300px] overflow-hidden border-b-4 border-black md:h-[440px]">
-              {recipeImage?.thumbnail ? (
-                <img
-                  src={
-                    recipeImage.thumbnail
-                  }
-                  alt={
-                    selectedRecipe.name
-                  }
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center bg-[#ffe033]">
-                  <div className="text-[150px]">
-                    {getIngredientEmoji(
-                      selectedRecipe
-                        .ingredients?.[0]
-                        ?.name ||
-                        "food"
-                    )}
-                  </div>
+              <div className="flex h-full items-center justify-center bg-[#ffe033]">
+                <div className="text-[150px]">
+                  {getIngredientEmoji(
+                    selectedRecipe.ingredients?.[0]?.name || "food"
+                  )}
                 </div>
-              )}
+              </div>
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
@@ -1498,20 +1461,6 @@ export default function KitchenUpload() {
               </div>
             </div>
 
-            {recipeImage?.source && (
-              <div className="border-t-4 border-black bg-white px-6 py-4 text-right">
-                <a
-                  href={
-                    recipeImage.source
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[10px] font-black uppercase tracking-[0.15em] underline"
-                >
-                  View image source
-                </a>
-              </div>
-            )}
           </div>
         </section>
 
@@ -1569,6 +1518,31 @@ export default function KitchenUpload() {
             </p>
           </div>
 
+          {!scanComplete && (
+            <div className="mt-12">
+              <button
+                type="button"
+                onClick={() =>
+                  fileInputRef.current?.click()
+                }
+                className="mr-3 rounded-full border-3 border-black bg-[#ffe033] px-7 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1"
+              >
+                SHOW US YOUR KITCHEN
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setInventory([]);
+                  setScanComplete(true);
+                  setShowUpload(false);
+                }}
+                className="mt-4 rounded-full border-3 border-black bg-white px-7 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1 md:mt-0"
+              >
+                I'LL JUST TYPE IT
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1635,22 +1609,22 @@ export default function KitchenUpload() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setInventory([]);
-                  setScanComplete(true);
-                  setShowUpload(false);
-                  window.scrollTo({
-                    top: 0,
-                    behavior: "smooth",
-                  });
-                }}
-                className="rounded-full border-3 border-black bg-white px-8 py-4 text-sm font-black uppercase shadow-[5px_5px_0_#171717] transition-transform hover:-translate-y-1"
-              >
-                I'LL JUST TYPE IT
-              </button>
+            <div className="mt-6 grid gap-3 text-sm font-black uppercase md:grid-cols-4">
+              <UploadSuggestion emoji="🧊">
+                Fridge
+              </UploadSuggestion>
+
+              <UploadSuggestion emoji="🍳">
+                Counter
+              </UploadSuggestion>
+
+              <UploadSuggestion emoji="🗄️">
+                Cupboard
+              </UploadSuggestion>
+
+              <UploadSuggestion emoji="🍱">
+                Leftovers
+              </UploadSuggestion>
             </div>
 
             {photos.length > 0 && (
@@ -1755,7 +1729,7 @@ export default function KitchenUpload() {
 
                     return (
                       <div
-                        key={`inventory-${index}`}
+                        key={`${item.name}-${index}`}
                         className={`rounded-[28px] border-3 border-black bg-white p-5 text-black shadow-[5px_5px_0_#ffe033] ${getCardRotation(
                           index
                         )}`}
@@ -1782,14 +1756,7 @@ export default function KitchenUpload() {
                                       .value
                                   )
                                 }
-                                placeholder="INGREDIENT NAME"
-                                autoFocus={
-                                  index ===
-                                    inventory.length - 1 &&
-                                  item.name === ""
-                                }
-                                aria-label="Ingredient name"
-                                className="w-full min-w-0 border-b-2 border-black bg-transparent text-xl font-black uppercase outline-none placeholder:text-black/30"
+                                className="w-full border-b-2 border-black bg-transparent text-xl font-black uppercase outline-none"
                               />
 
                               <input
@@ -1807,8 +1774,7 @@ export default function KitchenUpload() {
                                   )
                                 }
                                 placeholder="QUANTITY"
-                                aria-label="Ingredient quantity"
-                                className="mt-1 w-full min-w-0 bg-transparent text-xs font-bold uppercase outline-none placeholder:text-black/30"
+                                className="mt-1 w-full bg-transparent text-xs font-bold uppercase outline-none placeholder:text-black/30"
                               />
                             </div>
                           </div>
@@ -2273,11 +2239,6 @@ export default function KitchenUpload() {
                       recipe,
                       index
                     ) => {
-                      const image =
-                        recipeImages[
-                          recipe.name
-                        ];
-
                       const accent =
                         getCardAccent(
                           index
@@ -2310,46 +2271,23 @@ export default function KitchenUpload() {
                                 accent,
                             }}
                           >
-                            {image?.thumbnail ? (
-                              <img
-                                src={
-                                  image.thumbnail
-                                }
-                                alt={
-                                  recipe.name
-                                }
-                                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                              />
-                            ) : (
-                              <>
-                                <div className="absolute -right-5 -top-8 text-[130px] opacity-20">
-                                  {getIngredientEmoji(
-                                    recipe
-                                      .ingredients?.[0]
-                                      ?.name ||
-                                      "food"
-                                  )}
-                                </div>
+                            <div className="absolute -right-5 -top-8 text-[130px] opacity-20">
+                              {getIngredientEmoji(
+                                recipe.ingredients?.[0]?.name || "food"
+                              )}
+                            </div>
 
-                                <div className="absolute bottom-[-25px] left-[15%] rotate-[-12deg] text-7xl">
-                                  {getIngredientEmoji(
-                                    recipe
-                                      .ingredients?.[1]
-                                      ?.name ||
-                                      "vegetable"
-                                  )}
-                                </div>
+                            <div className="absolute bottom-[-25px] left-[15%] rotate-[-12deg] text-7xl">
+                              {getIngredientEmoji(
+                                recipe.ingredients?.[1]?.name || "vegetable"
+                              )}
+                            </div>
 
-                                <div className="absolute right-[20%] top-[42%] rotate-[8deg] text-6xl">
-                                  {getIngredientEmoji(
-                                    recipe
-                                      .ingredients?.[2]
-                                      ?.name ||
-                                      "food"
-                                  )}
-                                </div>
-                              </>
-                            )}
+                            <div className="absolute right-[20%] top-[42%] rotate-[8deg] text-6xl">
+                              {getIngredientEmoji(
+                                recipe.ingredients?.[2]?.name || "food"
+                              )}
+                            </div>
 
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
 
@@ -2372,23 +2310,6 @@ export default function KitchenUpload() {
                               </div>
                             </div>
 
-                            {image?.source && (
-                              <a
-                                href={
-                                  image.source
-                                }
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(
-                                  event
-                                ) =>
-                                  event.stopPropagation()
-                                }
-                                className="absolute bottom-3 right-4 z-10 text-[9px] font-bold uppercase text-white/70 hover:text-white"
-                              >
-                                Image source
-                              </a>
-                            )}
                           </div>
 
                           {/* RECIPE BODY */}
@@ -2533,6 +2454,24 @@ export default function KitchenUpload() {
 /* =========================================================
    SMALL COMPONENTS
    ========================================================= */
+
+function UploadSuggestion({
+  emoji,
+  children,
+}: {
+  emoji: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-full border-2 border-black bg-white px-4 py-3 shadow-[3px_3px_0_#171717]">
+      <span className="text-xl">
+        {emoji}
+      </span>
+
+      <span>{children}</span>
+    </div>
+  );
+}
 
 function FilterSection({
   number,
