@@ -30,24 +30,64 @@ type RecipeIngredient = {
   name: string;
   amount: string;
   from_kitchen: boolean;
+  preparation?: string;
+};
+
+type RecipeStep = {
+  step: number;
+  title: string;
+  instruction: string;
+  time_minutes: number;
+  heat: string;
+  temperature_celsius: number | null;
+  what_to_look_for: string;
 };
 
 type Recipe = {
+  id?: string;
   name: string;
   description: string;
   match_percentage: number;
   total_time_minutes: number;
+  prep_time_minutes: number;
+  cook_time_minutes: number;
   difficulty: string;
   servings: number;
+  equipment: string[];
   ingredients: RecipeIngredient[];
   missing_ingredients: {
     name: string;
     amount: string;
     essential: boolean;
   }[];
-  steps: string[];
+  prep_before_starting: string[];
+  steps: RecipeStep[];
+  common_mistakes: {
+    mistake: string;
+    how_to_avoid: string;
+  }[];
+  substitutions: {
+    ingredient: string;
+    replacement: string;
+    instructions: string;
+  }[];
+  optional_upgrades: string[];
+  serving_instructions: string[];
+  storage: {
+    refrigerator: string;
+    reheating: string;
+    freezer: string;
+  };
+  chef_tip: string;
   tags: string[];
 };
+
+type RecipeImage = {
+  url: string | null;
+  thumbnail: string | null;
+  source: string | null;
+  title: string;
+} | null;
 
 type UploadedPhoto = {
   id: string;
@@ -671,6 +711,10 @@ export default function KitchenUpload() {
   const [difficultyFilter, setDifficultyFilter] =
     useState("all");
 
+  const [recipeImages, setRecipeImages] = useState<
+    Record<string, RecipeImage>
+  >({});
+
   const [filters, setFilters] =
     useState<DinnerFilters>({
       time: "30",
@@ -1097,6 +1141,54 @@ export default function KitchenUpload() {
   }
 
   /* =========================================================
+     GOOGLE IMAGE SEARCH
+     ========================================================= */
+
+  async function loadRecipeImages(
+    recipeList: Recipe[]
+  ) {
+    try {
+      const queries =
+        recipeList.map(
+          (recipe) => recipe.name
+        );
+
+      const response = await fetch(
+        "/api/images",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            queries,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data =
+        await response.json();
+
+      if (data?.images) {
+        setRecipeImages((current) => ({
+          ...current,
+          ...data.images,
+        }));
+      }
+    } catch (error) {
+      console.error(
+        "Could not load recipe images:",
+        error
+      );
+    }
+  }
+
+  /* =========================================================
      GENERATE DINNER
      ========================================================= */
 
@@ -1142,6 +1234,11 @@ export default function KitchenUpload() {
       setRecipeSort("best");
       setDifficultyFilter("all");
 
+      if (generatedRecipes.length) {
+        loadRecipeImages(
+          generatedRecipes
+        );
+      }
 
       setTimeout(() => {
         document
@@ -1192,10 +1289,14 @@ export default function KitchenUpload() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          "More dinner generation failed"
-        );
-      }
+  const errorText = await response.text();
+
+  console.error("More dinner API error:", errorText);
+
+  throw new Error(
+    errorText || "More dinner generation failed"
+  );
+}
 
       const data = await response.json();
       const generatedRecipes =
@@ -1222,6 +1323,7 @@ export default function KitchenUpload() {
           ...current,
           ...freshRecipes,
         ]);
+        await loadRecipeImages(freshRecipes);
       }
     } catch (error) {
       console.error(
@@ -1249,6 +1351,7 @@ export default function KitchenUpload() {
     setSelectedRecipe(null);
     setScanComplete(false);
     setShowUpload(true);
+    setRecipeImages({});
     setRecipeSort("best");
     setDifficultyFilter("all");
 
@@ -1271,6 +1374,11 @@ export default function KitchenUpload() {
      ========================================================= */
 
   if (selectedRecipe) {
+    const recipeImage =
+      recipeImages[
+        selectedRecipe.name
+      ];
+
     return (
       <main className="min-h-screen bg-[#3aa8ff] text-[#171717]">
         <section className="mx-auto max-w-6xl px-5 py-8 md:px-8 md:py-12">
@@ -1286,13 +1394,28 @@ export default function KitchenUpload() {
 
           <div className="overflow-hidden rounded-[36px] border-4 border-black bg-white shadow-[8px_8px_0_#171717]">
             <div className="relative h-[300px] overflow-hidden border-b-4 border-black md:h-[440px]">
-              <div className="flex h-full items-center justify-center bg-[#ffe033]">
-                <div className="text-[150px]">
-                  {getIngredientEmoji(
-                    selectedRecipe.ingredients?.[0]?.name || "food"
-                  )}
+              {recipeImage?.thumbnail ? (
+                <img
+                  src={
+                    recipeImage.thumbnail
+                  }
+                  alt={
+                    selectedRecipe.name
+                  }
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center bg-[#ffe033]">
+                  <div className="text-[150px]">
+                    {getIngredientEmoji(
+                      selectedRecipe
+                        .ingredients?.[0]
+                        ?.name ||
+                        "food"
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
@@ -1330,6 +1453,22 @@ export default function KitchenUpload() {
                   </MetaPill>
 
                   <MetaPill>
+                    PREP{" "}
+                    {
+                      selectedRecipe.prep_time_minutes
+                    }{" "}
+                    MIN
+                  </MetaPill>
+
+                  <MetaPill>
+                    COOK{" "}
+                    {
+                      selectedRecipe.cook_time_minutes
+                    }{" "}
+                    MIN
+                  </MetaPill>
+
+                  <MetaPill>
                     DIFFICULTY{" "}
                     {selectedRecipe.difficulty?.toUpperCase()}
                   </MetaPill>
@@ -1340,8 +1479,28 @@ export default function KitchenUpload() {
                   </MetaPill>
                 </div>
 
-                {selectedRecipe.tags?.length >
-                  0 && (
+                {selectedRecipe.equipment?.length > 0 && (
+                  <div className="mt-8 rounded-[28px] border-3 border-black bg-[#72d84c] p-6">
+                    <div className="mb-4 text-xs font-black uppercase tracking-[0.18em]">
+                      EQUIPMENT
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {selectedRecipe.equipment.map(
+                        (item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border-2 border-black bg-white px-3 py-2 text-xs font-black uppercase"
+                          >
+                            {item}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedRecipe.tags?.length > 0 && (
                   <div className="mt-6 flex flex-wrap gap-2">
                     {selectedRecipe.tags.map(
                       (tag) => (
@@ -1370,27 +1529,38 @@ export default function KitchenUpload() {
                     ) => (
                       <div
                         key={`${ingredient.name}-${index}`}
-                        className="flex items-center justify-between gap-4 border-b-2 border-black/10 pb-3"
+                        className="border-b-2 border-black/10 pb-3"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">
-                            {getIngredientEmoji(
-                              ingredient.name
-                            )}
-                          </span>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">
+                              {getIngredientEmoji(
+                                ingredient.name
+                              )}
+                            </span>
 
-                          <span className="font-black">
+                            <span className="font-black">
+                              {
+                                ingredient.name
+                              }
+                            </span>
+                          </div>
+
+                          <span className="text-right text-sm font-bold opacity-60">
                             {
-                              ingredient.name
+                              ingredient.amount
                             }
                           </span>
                         </div>
 
-                        <span className="text-right text-sm font-bold opacity-60">
-                          {
-                            ingredient.amount
-                          }
-                        </span>
+                        {ingredient.preparation && (
+                          <div className="mt-2 pl-10 text-xs font-bold opacity-50">
+                            PREP:{" "}
+                            {
+                              ingredient.preparation
+                            }
+                          </div>
+                        )}
                       </div>
                     )
                   )}
@@ -1434,33 +1604,306 @@ export default function KitchenUpload() {
               </div>
             </div>
 
+            {selectedRecipe.prep_before_starting?.length > 0 && (
+              <div className="border-t-4 border-black bg-[#72d84c] p-6 md:p-12">
+                <div className="mb-6 text-xs font-black uppercase tracking-[0.18em]">
+                  BEFORE YOU START
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedRecipe.prep_before_starting.map(
+                    (item, index) => (
+                      <div
+                        key={`${item}-${index}`}
+                        className="rounded-[20px] border-3 border-black bg-white p-4 font-bold shadow-[4px_4px_0_#171717]"
+                      >
+                        <span className="mr-2 font-black">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        {item}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="border-t-4 border-black bg-[#ffe033] p-6 md:p-12">
-              <div className="mb-8 text-xs font-black uppercase tracking-[0.18em]">
-                HOW TO MAKE IT
+              <div className="mb-8">
+                <div className="text-xs font-black uppercase tracking-[0.18em]">
+                  HOW TO MAKE IT
+                </div>
+
+                <h2 className="mt-2 text-4xl font-black uppercase leading-[0.9] md:text-6xl">
+                  STEP BY STEP.
+                </h2>
               </div>
 
               <div className="space-y-5">
                 {selectedRecipe.steps?.map(
                   (step, index) => (
                     <div
-                      key={index}
-                      className="flex gap-5 rounded-[24px] border-3 border-black bg-white p-5 shadow-[4px_4px_0_#171717]"
+                      key={`${step.step}-${index}`}
+                      className="rounded-[24px] border-3 border-black bg-white p-5 shadow-[4px_4px_0_#171717] md:p-6"
                     >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-3 border-black bg-[#72d84c] text-lg font-black">
-                        {String(
-                          index + 1
-                        ).padStart(2, "0")}
-                      </div>
+                      <div className="flex gap-5">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-3 border-black bg-[#72d84c] text-lg font-black">
+                          {String(
+                            step.step ||
+                              index + 1
+                          ).padStart(2, "0")}
+                        </div>
 
-                      <p className="pt-2 text-lg font-bold leading-relaxed">
-                        {step}
-                      </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <h3 className="text-2xl font-black uppercase leading-none">
+                              {
+                                step.title
+                              }
+                            </h3>
+
+                            <div className="flex flex-wrap gap-2">
+                              {step.time_minutes > 0 && (
+                                <span className="rounded-full border-2 border-black bg-[#ffe033] px-3 py-1 text-[10px] font-black uppercase">
+                                  {step.time_minutes} MIN
+                                </span>
+                              )}
+
+                              {step.heat && (
+                                <span className="rounded-full border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase">
+                                  {step.heat}
+                                </span>
+                              )}
+
+                              {step.temperature_celsius !== null &&
+                                step.temperature_celsius !== undefined && (
+                                  <span className="rounded-full border-2 border-black bg-white px-3 py-1 text-[10px] font-black uppercase">
+                                    {step.temperature_celsius}°C
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+
+                          <p className="mt-4 text-base font-bold leading-relaxed md:text-lg">
+                            {
+                              step.instruction
+                            }
+                          </p>
+
+                          {step.what_to_look_for && (
+                            <div className="mt-4 rounded-[16px] border-2 border-black bg-[#fffaf0] p-4">
+                              <div className="text-[10px] font-black uppercase tracking-[0.14em] opacity-50">
+                                WHAT TO LOOK FOR
+                              </div>
+
+                              <p className="mt-1 text-sm font-bold leading-relaxed">
+                                {
+                                  step.what_to_look_for
+                                }
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )
                 )}
               </div>
             </div>
 
+            {selectedRecipe.common_mistakes?.length > 0 && (
+              <div className="border-t-4 border-black bg-[#ff7043] p-6 md:p-12">
+                <div className="mb-7">
+                  <div className="text-xs font-black uppercase tracking-[0.18em]">
+                    AVOID THESE
+                  </div>
+
+                  <h2 className="mt-2 text-4xl font-black uppercase leading-[0.9] md:text-5xl">
+                    COMMON MISTAKES.
+                  </h2>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {selectedRecipe.common_mistakes.map(
+                    (item, index) => (
+                      <div
+                        key={`${item.mistake}-${index}`}
+                        className="rounded-[22px] border-3 border-black bg-white p-5 shadow-[4px_4px_0_#171717]"
+                      >
+                        <div className="text-lg font-black uppercase">
+                          {item.mistake}
+                        </div>
+
+                        <p className="mt-3 text-sm font-bold leading-relaxed">
+                          {item.how_to_avoid}
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            {selectedRecipe.substitutions?.length > 0 && (
+              <div className="border-t-4 border-black bg-[#fffaf0] p-6 md:p-12">
+                <div className="mb-7">
+                  <div className="text-xs font-black uppercase tracking-[0.18em] opacity-50">
+                    FLEXIBLE COOKING
+                  </div>
+
+                  <h2 className="mt-2 text-4xl font-black uppercase leading-[0.9] md:text-5xl">
+                    SUBSTITUTIONS.
+                  </h2>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedRecipe.substitutions.map(
+                    (item, index) => (
+                      <div
+                        key={`${item.ingredient}-${index}`}
+                        className="rounded-[22px] border-3 border-black bg-white p-5 shadow-[4px_4px_0_#171717]"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border-2 border-black bg-[#ffe033] px-3 py-1 text-[10px] font-black uppercase">
+                            {item.ingredient}
+                          </span>
+
+                          <span className="font-black">
+                            →
+                          </span>
+
+                          <span className="rounded-full border-2 border-black bg-[#72d84c] px-3 py-1 text-[10px] font-black uppercase">
+                            {item.replacement}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-sm font-bold leading-relaxed">
+                          {item.instructions}
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            {selectedRecipe.optional_upgrades?.length > 0 && (
+              <div className="border-t-4 border-black bg-[#72d84c] p-6 md:p-12">
+                <div className="mb-7">
+                  <div className="text-xs font-black uppercase tracking-[0.18em]">
+                    OPTIONAL
+                  </div>
+
+                  <h2 className="mt-2 text-4xl font-black uppercase leading-[0.9] md:text-5xl">
+                    MAKE IT BETTER.
+                  </h2>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedRecipe.optional_upgrades.map(
+                    (item, index) => (
+                      <div
+                        key={`${item}-${index}`}
+                        className="rounded-[20px] border-3 border-black bg-white p-4 font-bold shadow-[4px_4px_0_#171717]"
+                      >
+                        {item}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="grid border-t-4 border-black md:grid-cols-2">
+              {selectedRecipe.serving_instructions?.length > 0 && (
+                <div className="border-b-4 border-black bg-[#fffaf0] p-6 md:border-b-0 md:border-r-4 md:p-10">
+                  <div className="text-xs font-black uppercase tracking-[0.18em] opacity-50">
+                    SERVING
+                  </div>
+
+                  <h2 className="mt-2 text-3xl font-black uppercase">
+                    SERVE IT RIGHT.
+                  </h2>
+
+                  <div className="mt-5 space-y-3">
+                    {selectedRecipe.serving_instructions.map(
+                      (item, index) => (
+                        <div
+                          key={`${item}-${index}`}
+                          className="text-sm font-bold leading-relaxed"
+                        >
+                          {item}
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white p-6 md:p-10">
+                <div className="text-xs font-black uppercase tracking-[0.18em] opacity-50">
+                  STORAGE
+                </div>
+
+                <div className="mt-5 space-y-5">
+                  <div>
+                    <div className="text-[10px] font-black uppercase opacity-40">
+                      REFRIGERATOR
+                    </div>
+                    <p className="mt-1 text-sm font-bold leading-relaxed">
+                      {selectedRecipe.storage?.refrigerator || "Not specified."}
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-black uppercase opacity-40">
+                      REHEATING
+                    </div>
+                    <p className="mt-1 text-sm font-bold leading-relaxed">
+                      {selectedRecipe.storage?.reheating || "Not specified."}
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-black uppercase opacity-40">
+                      FREEZER
+                    </div>
+                    <p className="mt-1 text-sm font-bold leading-relaxed">
+                      {selectedRecipe.storage?.freezer || "Not specified."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {selectedRecipe.chef_tip && (
+              <div className="border-t-4 border-black bg-[#ffe033] p-6 md:p-10">
+                <div className="rounded-[24px] border-3 border-black bg-white p-6 shadow-[5px_5px_0_#171717]">
+                  <div className="text-xs font-black uppercase tracking-[0.18em] opacity-50">
+                    CHEF TIP
+                  </div>
+
+                  <p className="mt-3 text-xl font-black leading-relaxed md:text-2xl">
+                    {selectedRecipe.chef_tip}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {recipeImage?.source && (
+              <div className="border-t-4 border-black bg-white px-6 py-4 text-right">
+                <a
+                  href={
+                    recipeImage.source
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[10px] font-black uppercase tracking-[0.15em] underline"
+                >
+                  View image source
+                </a>
+              </div>
+            )}
           </div>
         </section>
 
@@ -2239,6 +2682,11 @@ export default function KitchenUpload() {
                       recipe,
                       index
                     ) => {
+                      const image =
+                        recipeImages[
+                          recipe.name
+                        ];
+
                       const accent =
                         getCardAccent(
                           index
@@ -2271,23 +2719,46 @@ export default function KitchenUpload() {
                                 accent,
                             }}
                           >
-                            <div className="absolute -right-5 -top-8 text-[130px] opacity-20">
-                              {getIngredientEmoji(
-                                recipe.ingredients?.[0]?.name || "food"
-                              )}
-                            </div>
+                            {image?.thumbnail ? (
+                              <img
+                                src={
+                                  image.thumbnail
+                                }
+                                alt={
+                                  recipe.name
+                                }
+                                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                              />
+                            ) : (
+                              <>
+                                <div className="absolute -right-5 -top-8 text-[130px] opacity-20">
+                                  {getIngredientEmoji(
+                                    recipe
+                                      .ingredients?.[0]
+                                      ?.name ||
+                                      "food"
+                                  )}
+                                </div>
 
-                            <div className="absolute bottom-[-25px] left-[15%] rotate-[-12deg] text-7xl">
-                              {getIngredientEmoji(
-                                recipe.ingredients?.[1]?.name || "vegetable"
-                              )}
-                            </div>
+                                <div className="absolute bottom-[-25px] left-[15%] rotate-[-12deg] text-7xl">
+                                  {getIngredientEmoji(
+                                    recipe
+                                      .ingredients?.[1]
+                                      ?.name ||
+                                      "vegetable"
+                                  )}
+                                </div>
 
-                            <div className="absolute right-[20%] top-[42%] rotate-[8deg] text-6xl">
-                              {getIngredientEmoji(
-                                recipe.ingredients?.[2]?.name || "food"
-                              )}
-                            </div>
+                                <div className="absolute right-[20%] top-[42%] rotate-[8deg] text-6xl">
+                                  {getIngredientEmoji(
+                                    recipe
+                                      .ingredients?.[2]
+                                      ?.name ||
+                                      "food"
+                                  )}
+                                </div>
+                              </>
+                            )}
 
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
 
@@ -2310,6 +2781,23 @@ export default function KitchenUpload() {
                               </div>
                             </div>
 
+                            {image?.source && (
+                              <a
+                                href={
+                                  image.source
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(
+                                  event
+                                ) =>
+                                  event.stopPropagation()
+                                }
+                                className="absolute bottom-3 right-4 z-10 text-[9px] font-bold uppercase text-white/70 hover:text-white"
+                              >
+                                Image source
+                              </a>
+                            )}
                           </div>
 
                           {/* RECIPE BODY */}
@@ -2548,4 +3036,5 @@ function Footer() {
       </div>
     </footer>
   );
+
 }
